@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .header {
+      background-color: #0066cc;
+      color: white;
+      padding: 15px 20px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .container {
+      display: flex;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #007BFF;
+      padding-top: 10px;
+      color: white;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      background: transparent;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .sidebar button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #f5f5f5;
+      overflow-y: auto;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      margin-left: 10px;
+    }
+
+    button.calc-btn {
+      margin-top: 15px;
+      padding: 8px 16px;
+      font-size: 14px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    table, th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+
+    th {
+      background-color: #007BFF;
+      color: white;
+    }
+
+    canvas {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  Welcome, <span id="welcomeUser"></span>
+</div>
+
+<div class="container">
+  <div class="sidebar">
+    <button onclick="showHome()">🏠 Home</button>
+    <button onclick="showMarks()">📊 Marks</button>
+    <button onclick="showAttendance()">📅 Attendance</button>
+    <button onclick="showCourses()">🧾 Courses</button>
+    <button onclick="logout()">📄 Logout</button>
+  </div>
+
+  <div class="main-content" id="mainContent">
+    <h2>Dashboard</h2>
+    <p>Select an option from the sidebar.</p>
+  </div>
+</div>
+
+<script>
+  const subjects = ["Maths", "DBMS", "OS", "DAA", "CN", "SE", "NPTEL"];
+
+  const getGradePoint = (mark) => {
+    if (mark >= 90) return 10;
+    if (mark >= 80) return 9;
+    if (mark >= 70) return 8;
+    if (mark >= 60) return 7;
+    if (mark >= 50) return 6;
+    if (mark >= 40) return 5;
+    return 0;
+  };
+
+  const getGradeLetter = (point) => {
+    if (point === 10) return "S";
+    if (point === 9) return "A";
+    if (point === 8) return "B";
+    if (point === 7) return "C";
+    if (point === 6) return "D";
+    if (point === 5) return "E";
+    return "F";
+  };
+
+  function showHome() {
+    document.getElementById("mainContent").innerHTML = `
+      <h2>Welcome Home</h2>
+      <p>This is your student performance dashboard.</p>
+      <p>Login Time: ${localStorage.getItem("loginTime") || "Guest Mode"}</p>
+    `;
+  }
+
+  function showMarks() {
+    let html = `<h2>Enter Your Marks and Credits</h2>`;
+    html += `<table><tr><th>Subject</th><th>Mark</th><th>Credit</th></tr>`;
+    subjects.forEach(sub => {
+      html += `<tr>
+        <td>${sub}</td>
+        <td><input type="number" id="mark-${sub}" min="0" max="100" /></td>
+        <td><input type="number" id="credit-${sub}" min="1" max="5" /></td>
+      </tr>`;
+    });
+    html += `</table>`;
+    html += `<button class="calc-btn" onclick="calculateGPA()">Calculate GPA</button>`;
+    html += `<div id="gpaResult"></div>`;
+    html += `<canvas id="marksChart" width="400" height="200"></canvas>`;
+    document.getElementById("mainContent").innerHTML = html;
+  }
+
+  function calculateGPA() {
+    let totalWeightedPoints = 0;
+    let totalCredits = 0;
+    let labels = [], scores = [];
+    let gradeTable = `<h3>Grades:</h3><table><tr><th>Subject</th><th>Mark</th><th>Credit</th><th>Grade</th></tr>`;
+
+    subjects.forEach(sub => {
+      const mark = parseInt(document.getElementById(`mark-${sub}`).value);
+      const credit = parseInt(document.getElementById(`credit-${sub}`).value);
+      if (!isNaN(mark) && !isNaN(credit)) {
+        let point = getGradePoint(mark);
+        if (sub === "NPTEL" && mark >= 90) point += 0.2;
+        totalWeightedPoints += point * credit;
+        totalCredits += credit;
+        labels.push(sub);
+        scores.push(mark);
+        gradeTable += `<tr><td>${sub}</td><td>${mark}</td><td>${credit}</td><td>${getGradeLetter(Math.floor(point))}</td></tr>`;
+      }
+    });
+
+    gradeTable += `</table>`;
+    const gpa = totalCredits > 0 ? (totalWeightedPoints / totalCredits).toFixed(2) : "N/A";
+    document.getElementById("gpaResult").innerHTML = `<h3>GPA (credit-weighted): ${gpa}</h3>${gradeTable}`;
+    renderChart(labels, scores);
+  }
+
+  function renderChart(labels, data) {
+    const ctx = document.getElementById('marksChart').getContext('2d');
+    if (window.myChart) window.myChart.destroy();
+    window.myChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Marks',
+          data,
+          backgroundColor: '#007BFF'
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, max: 100 }
+        }
+      }
+    });
+  }
+
+  function showAttendance() {
+    let html = `<h2>Enter Your Attendance (%)</h2>`;
+    html += `<table><tr><th>Subject</th><th>Attendance (%)</th></tr>`;
+    subjects.forEach(sub => {
+      html += `<tr><td>${sub}</td><td><input type="number" id="att-${sub}" min="0" max="100" /></td></tr>`;
+    });
+    html += `</table>`;
+    html += `<button class="calc-btn" onclick="checkAttendance()">Check Eligibility</button>`;
+    html += `<div id="attResult"></div>`;
+    document.getElementById("mainContent").innerHTML = html;
+  }
+
+  function checkAttendance() {
+    let result = `<h3>Attendance Status:</h3><table><tr><th>Subject</th><th>Attendance</th><th>Status</th></tr>`;
+    subjects.forEach(sub => {
+      const att = parseInt(document.getElementById(`att-${sub}`).value);
+      if (!isNaN(att)) {
+        let status = att >= 75 ? "Eligible" : "Fail due to attendance";
+        result += `<tr><td>${sub}</td><td>${att}%</td><td>${status}</td></tr>`;
+      }
+    });
+    result += `</table>`;
+    document.getElementById("attResult").innerHTML = result;
+  }
+
+  function showCourses() {
+    let html = `<h2>Your Courses</h2><ul>`;
+    subjects.forEach(sub => {
+      html += `<li>${sub}</li>`;
+    });
+    html += `</ul>`;
+    document.getElementById("mainContent").innerHTML = html;
+  }
+
+  function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+  }
+
+  window.onload = function() {
+    const username = localStorage.getItem("username");
+    document.getElementById("welcomeUser").textContent = username || "Guest";
+  };
+</script>
+
+</body>
+</html>
