@@ -20,7 +20,7 @@ A responsive web app for students to track academic performance, calculate GPA, 
 
 ## Folder Structure
 
-├── index.html # Login page (default entry)
-├── student.html # Main student dashboard
-├── style.css # Styling
-├── login-bg.png # Background image
+-├── index.html # Login page (default entry)
+-├── student.html # Main student dashboard
+-├── style.css # Styling
+-├── login-bg.png # Background image
